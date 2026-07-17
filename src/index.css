@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-ivory-100 text-charcoal-800 font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif;
+  }
+
+  /* Custom scrollbar with gold colors */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-ivory-200;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gold-500 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gold-600;
+  }
+
+  ::-webkit-scrollbar-corner {
+    @apply bg-ivory-200;
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-color: #C9A227 #F1EBE0;
+    scrollbar-width: thin;
+  }
+}
+
+@layer components {
+  .container-luxury {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gold-500 px-6 py-3 text-sm font-semibold uppercase tracking-wider text-white transition-all duration-300 hover:bg-gold-600 hover:shadow-gold focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-ivory-100 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-gold-500 bg-transparent px-6 py-3 text-sm font-semibold uppercase tracking-wider text-gold-600 transition-all duration-300 hover:bg-gold-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-ivory-100 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-transparent px-6 py-3 text-sm font-semibold uppercase tracking-wider text-charcoal-700 transition-all duration-300 hover:bg-ivory-200 hover:text-charcoal-900 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-ivory-100 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-ivory-300 bg-white px-4 py-3 text-charcoal-800 placeholder-charcoal-400 transition-all duration-200 focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-500/30 disabled:cursor-not-allowed disabled:bg-ivory-200;
+  }
+
+  .label-field {
+    @apply mb-1.5 block text-sm font-medium text-charcoal-700;
+  }
+
+  .card-luxury {
+    @apply rounded-2xl border border-ivory-200 bg-white shadow-luxury;
+  }
+
+  .section-padding {
+    @apply py-20 md:py-28;
+  }
+
+  .heading-eyebrow {
+    @apply text-sm font-semibold uppercase tracking-[0.2em] text-gold-600;
+  }
+
+  .glass {
+    @apply bg-white/70 backdrop-blur-md;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-ivory-200;
+  }
+
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 100%
+    );
+    animation: shimmer 2s linear infinite;
+  }
+
+  .text-shadow-luxury {
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
