@@ -1,5 +1,11 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import {
+  NavLink,
+  Link,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -17,9 +23,11 @@ import {
   HelpCircle,
   ShieldCheck,
   BarChart3,
-} from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { COMPANY } from '../../lib/constants';
+} from "lucide-react";
+
+import { cn } from "../../lib/utils";
+import { COMPANY } from "../../lib/constants";
+import { supabase } from "../../lib/supabase";
 
 // ---------------------------------------------------------------------------
 // Nav items
@@ -32,65 +40,72 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', to: '/admin', icon: LayoutDashboard },
-  { label: 'Bookings', to: '/admin/bookings', icon: CalendarDays },
-  { label: 'Quotations', to: '/admin/quotations', icon: FileText },
-  { label: 'Services', to: '/admin/services', icon: Briefcase },
-  { label: 'Rental Inventory', to: '/admin/rentals', icon: Package },
-  { label: 'Gallery', to: '/admin/gallery', icon: Image },
-  { label: 'Testimonials', to: '/admin/testimonials', icon: Star },
-  { label: 'Customers', to: '/admin/customers', icon: Users },
-  { label: 'Staff', to: '/admin/staff', icon: ShieldCheck },
-  { label: 'FAQs', to: '/admin/faqs', icon: HelpCircle },
-  { label: 'Reports', to: '/admin/reports', icon: BarChart3 },
-  { label: 'Settings', to: '/admin/settings', icon: Settings },
+  { label: "Dashboard", to: "/admin", icon: LayoutDashboard },
+  { label: "Bookings", to: "/admin/bookings", icon: CalendarDays },
+  { label: "Quotations", to: "/admin/quotations", icon: FileText },
+  { label: "Services", to: "/admin/services", icon: Briefcase },
+  { label: "Rental Inventory", to: "/admin/inventory", icon: Package },
+  { label: "Gallery", to: "/admin/gallery", icon: Image },
+  { label: "Testimonials", to: "/admin/testimonials", icon: Star },
+  { label: "Customers", to: "/admin/customers", icon: Users },
+  { label: "Staff", to: "/admin/staff", icon: ShieldCheck },
+  { label: "FAQs", to: "/admin/faqs", icon: HelpCircle },
+  { label: "Reports", to: "/admin/reports", icon: BarChart3 },
+  { label: "Settings", to: "/admin/settings", icon: Settings },
 ];
 
 // ---------------------------------------------------------------------------
-// Sidebar content (shared between desktop and mobile)
+// Sidebar
 // ---------------------------------------------------------------------------
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({
+  onNavigate,
+  onLogout,
+}: {
+  onNavigate?: () => void;
+  onLogout: () => void;
+}) {
   return (
     <div className="flex h-full flex-col">
-      {/* Logo / brand */}
+      {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-charcoal-800 px-6">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700">
           <svg
             viewBox="0 0 24 24"
             fill="currentColor"
             className="h-5 w-5 text-gold-400"
-            aria-hidden="true"
           >
             <path d="M12 2l2.39 7.36H22l-6.19 4.5L18.2 21 12 16.5 5.8 21l2.39-7.14L2 9.36h7.61L12 2z" />
           </svg>
         </span>
+
         <span className="font-serif text-lg font-semibold text-white">
           {COMPANY.name}
         </span>
       </div>
 
-      {/* Nav links */}
+      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-1">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
+
             return (
               <li key={item.to}>
                 <NavLink
                   to={item.to}
-                  end={item.to === '/admin'}
+                  end={item.to === "/admin"}
                   onClick={onNavigate}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                       isActive
-                        ? 'bg-gold-500/10 text-gold-400'
-                        : 'text-charcoal-300 hover:bg-charcoal-800 hover:text-white'
+                        ? "bg-gold-500/10 text-gold-400"
+                        : "text-charcoal-300 hover:bg-charcoal-800 hover:text-white"
                     )
                   }
                 >
-                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  <Icon className="h-5 w-5" />
                   {item.label}
                 </NavLink>
               </li>
@@ -103,9 +118,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="border-t border-charcoal-800 p-3">
         <button
           type="button"
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-charcoal-300 transition-colors hover:bg-charcoal-800 hover:text-white"
+          onClick={onLogout}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-charcoal-300 transition hover:bg-charcoal-800 hover:text-white"
         >
-          <LogOut className="h-5 w-5 flex-shrink-0" />
+          <LogOut className="h-5 w-5" />
           Sign Out
         </button>
       </div>
@@ -114,108 +130,106 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// AdminLayout
+// Admin Layout
 // ---------------------------------------------------------------------------
 
 export function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { pathname } = useLocation();
 
-  // Close mobile sidebar on route change
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
-  // Derive page title from current path
   const activeItem = NAV_ITEMS.find(
     (item) =>
       item.to === pathname ||
-      (item.to !== '/admin' && pathname.startsWith(item.to))
+      (item.to !== "/admin" && pathname.startsWith(item.to))
   );
-  const pageTitle = activeItem?.label ?? 'Dashboard';
+
+  const pageTitle = activeItem?.label ?? "Dashboard";
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/admin/login", { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-ivory-100">
-      {/* Desktop sidebar */}
+      {/* Desktop Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-charcoal-900 lg:block">
-        <SidebarContent />
+        <SidebarContent onLogout={handleLogout} />
       </aside>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile Sidebar */}
       <div
         className={cn(
-          'fixed inset-0 z-50 lg:hidden',
-          mobileOpen ? 'pointer-events-auto' : 'pointer-events-none'
+          "fixed inset-0 z-50 lg:hidden",
+          mobileOpen ? "pointer-events-auto" : "pointer-events-none"
         )}
-        aria-hidden={!mobileOpen}
       >
         <div
           className={cn(
-            'absolute inset-0 bg-charcoal-900/50 transition-opacity duration-300',
-            mobileOpen ? 'opacity-100' : 'opacity-0'
+            "absolute inset-0 bg-black/50 transition-opacity",
+            mobileOpen ? "opacity-100" : "opacity-0"
           )}
           onClick={() => setMobileOpen(false)}
         />
+
         <aside
           className={cn(
-            'absolute left-0 top-0 h-full w-64 bg-charcoal-900 shadow-2xl transition-transform duration-300',
-            mobileOpen ? 'translate-x-0' : '-translate-x-full'
+            "absolute left-0 top-0 h-full w-64 bg-charcoal-900 shadow-2xl transition-transform",
+            mobileOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
-          <SidebarContent onNavigate={() => setMobileOpen(false)} />
+          <SidebarContent
+            onNavigate={() => setMobileOpen(false)}
+            onLogout={handleLogout}
+          />
         </aside>
       </div>
 
-      {/* Main content area */}
+      {/* Main */}
       <div className="lg:pl-64">
-        {/* Top bar */}
+        {/* Header */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-ivory-200 bg-ivory-100/95 px-4 backdrop-blur-md sm:px-6">
           <div className="flex items-center gap-3">
             <button
-              type="button"
               onClick={() => setMobileOpen(true)}
               className="rounded-lg p-2 text-charcoal-700 hover:bg-ivory-200 lg:hidden"
-              aria-label="Open menu"
             >
               <Menu className="h-6 w-6" />
             </button>
+
             <h1 className="font-serif text-xl font-semibold text-charcoal-900">
               {pageTitle}
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-3">
             <Link
               to="/"
-              className="flex items-center gap-2 rounded-lg p-2 text-charcoal-600 transition-colors hover:bg-ivory-200 hover:text-charcoal-900"
-              aria-label="View public site"
+              className="flex items-center gap-2 rounded-lg p-2 text-charcoal-600 hover:bg-ivory-200"
             >
               <Home className="h-5 w-5" />
-              <span className="hidden text-sm font-medium sm:inline">
-                View Site
-              </span>
+
+              <span className="hidden sm:inline">View Site</span>
             </Link>
 
-            <button
-              type="button"
-              className="relative rounded-lg p-2 text-charcoal-600 transition-colors hover:bg-ivory-200 hover:text-charcoal-900"
-              aria-label="Notifications"
-            >
+            <button className="relative rounded-lg p-2 text-charcoal-600 hover:bg-ivory-200">
               <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-gold-500" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-gold-500"></span>
             </button>
 
-            <button
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-700 text-sm font-semibold text-white"
-              aria-label="User account"
-            >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-700 text-sm font-semibold text-white">
               ED
-            </button>
+            </div>
           </div>
         </header>
 
-        {/* Page content */}
+        {/* Content */}
         <main className="p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
