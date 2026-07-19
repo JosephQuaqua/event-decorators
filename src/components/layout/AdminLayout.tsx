@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   NavLink,
   Link,
@@ -14,6 +14,7 @@ import {
   Image,
   Star,
   Users,
+  User,
   Settings,
   Bell,
   LogOut,
@@ -28,6 +29,7 @@ import {
 import { cn } from "../../lib/utils";
 import { COMPANY } from "../../lib/constants";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../contexts/AuthContext";
 
 // ---------------------------------------------------------------------------
 // Nav items
@@ -51,6 +53,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Staff", to: "/admin/staff", icon: ShieldCheck },
   { label: "FAQs", to: "/admin/faqs", icon: HelpCircle },
   { label: "Reports", to: "/admin/reports", icon: BarChart3 },
+  { label: "My Profile", to: "/admin/profile", icon: User },
   { label: "Settings", to: "/admin/settings", icon: Settings },
 ];
 
@@ -135,6 +138,20 @@ function SidebarContent({
 
 export function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
+  const { profile } = useAuth();
+
+const initials = useMemo(() => {
+  if (!profile?.full_name) return "ED";
+
+  return profile.full_name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
+}, [profile]);
 
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -223,11 +240,57 @@ export function AdminLayout() {
               <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-gold-500"></span>
             </button>
 
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-700 text-sm font-semibold text-white">
-              ED
-            </div>
-          </div>
-        </header>
+           <div className="relative">
+  <button
+    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+    className="flex items-center gap-3 rounded-xl p-2 hover:bg-ivory-200 transition"
+  >
+    <div className="h-10 w-10 overflow-hidden rounded-full bg-emerald-700">
+  {profile?.avatar_url ? (
+    <img
+      src={profile.avatar_url}
+      alt={profile.full_name ?? "Profile"}
+      className="h-full w-full object-cover"
+    />
+  ) : (
+    <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-white">
+      {initials}
+    </div>
+  )}
+</div>
+
+    <div className="hidden md:block text-left">
+      <p className="text-sm font-semibold text-charcoal-900">
+        {profile?.full_name || "Administrator"}
+      </p>
+
+      <p className="text-xs capitalize text-charcoal-500">
+        {(profile?.role || "").replace("_", " ")}
+      </p>
+    </div>
+  </button>
+
+  {profileMenuOpen && (
+    <div className="absolute right-0 mt-2 w-56 rounded-xl border border-ivory-200 bg-white shadow-xl overflow-hidden">
+      <Link
+        to="/admin/profile"
+        className="block px-4 py-3 hover:bg-ivory-100"
+        onClick={() => setProfileMenuOpen(false)}
+      >
+        My Profile
+      </Link>
+
+      <button
+        onClick={handleLogout}
+        className="block w-full px-4 py-3 text-left hover:bg-rose-50 text-rose-600"
+      >
+        Sign Out
+      </button>
+    </div>
+  )}
+</div>
+</div>
+</header>
 
         {/* Content */}
         <main className="p-4 sm:p-6 lg:p-8">

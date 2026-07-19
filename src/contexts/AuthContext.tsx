@@ -14,9 +14,9 @@ type AuthContextType = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 type AuthProviderProps = {
@@ -87,6 +87,11 @@ setProfile(data);
     };
   }, []);
 
+  const refreshProfile = async () => {
+  if (!user) return;
+
+  await loadProfile(user.id);
+};
   const signOut = async () => {
     await supabase.auth.signOut();
 
@@ -97,14 +102,15 @@ setProfile(data);
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        loading,
-        signOut,
-      }}
-    >
+  value={{
+    user,
+    session,
+    profile,
+    loading,
+    refreshProfile,
+    signOut,
+  }}
+>
       {children}
     </AuthContext.Provider>
   );
