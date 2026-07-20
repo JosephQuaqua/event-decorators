@@ -219,7 +219,7 @@ export function ContactPage() {
                   )}
                   {socialLinks?.facebook && (
                     <a
-                      href={socialLinks.facebook}
+                      href="https://www.facebook.com/share/1F4jVcVVVh/?mibextid=wwXIfr"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-4 rounded-xl border border-ivory-200 bg-ivory-50 p-4 transition-all hover:border-gold-500 hover:shadow-gold"

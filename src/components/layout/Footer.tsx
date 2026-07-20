@@ -29,7 +29,8 @@ const GET_STARTED_LINKS = [
 ];
 
 const DEFAULT_PHONE = '+231 77 123 4567';
-const DEFAULT_EMAIL = 'hello@eventdecorators.lr';
+
+const DEFAULT_EMAIL = 'youreventdecoratorofficial@gmail.com';
 const DEFAULT_ADDRESS =
   '15 Broad Street, Monrovia, Montserrado County, Liberia';
 
