@@ -1,4 +1,4 @@
-import AdminProfile from "./pages/admin/AdminProfile";
+import Profile from "./pages/admin/AdminProfile";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
@@ -150,15 +150,20 @@ export default function App() {
             />
             <Route path="staff" element={<AdminStaff />} />
             <Route path="faqs" element={<AdminFAQs />} />
-            <Route
-              path="reports"
-              element={<AdminReports />}
-            />
-            <Route path="profile" element={<AdminProfile />} />
-            <Route
-              path="settings"
-              element={<AdminSettings />}
-            />
+           <Route
+  path="reports"
+  element={<AdminReports />}
+/>
+
+<Route
+  path="profile"
+  element={<Profile />}
+/>
+
+<Route
+  path="settings"
+  element={<AdminSettings />}
+/>
           </Route>
 
           {/* =========================

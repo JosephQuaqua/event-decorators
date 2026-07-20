@@ -1,11 +1,11 @@
-
+import toast from "react-hot-toast";
 import { Camera } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 
 export default function Profile() {
-  const { profile, refreshProfile } = useAuth();
+const { profile, refreshProfile } = useAuth();
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -17,6 +17,7 @@ export default function Profile() {
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url ?? "");
+const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -34,18 +35,24 @@ setAvatarPreview(profile.avatar_url ?? "");
   if (!profile) return;
 
   setSaving(true);
+
+  const oldAvatarUrl = profile.avatar_url;
+
   let avatarUrl = profile.avatar_url;
 
 if (avatarFile) {
-  const fileExt = avatarFile.name.split(".").pop();
+  setUploadingAvatar(true);
 
-  const fileName = `${profile.id}.${fileExt}`;
+  try {
+    const fileExt = avatarFile.name.split(".").pop();
 
-  const { error: uploadError } = await supabase.storage
-    .from("avatars")
-    .upload(fileName, avatarFile, {
-      upsert: true,
-    });
+    const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(fileName, avatarFile, {
+        upsert: true,
+      });
 
   if (uploadError) throw uploadError;
 
@@ -53,7 +60,20 @@ if (avatarFile) {
     .from("avatars")
     .getPublicUrl(fileName);
 
+    await supabase
+  .from("profiles")
+  .update({
+    avatar_url: data.publicUrl,
+  })
+  .eq("id", profile.id);
+
+setAvatarPreview(data.publicUrl);
+
   avatarUrl = data.publicUrl;
+
+  } finally {
+  setUploadingAvatar(false);
+}
 }
 
   try {
@@ -75,9 +95,27 @@ if (avatarFile) {
 
     setAvatarPreview(avatarUrl ?? "");
 
-    alert("Profile updated successfully!");
+    await refreshProfile();
+
+    if (
+  oldAvatarUrl &&
+  oldAvatarUrl !== avatarUrl &&
+  oldAvatarUrl.includes("/avatars/")
+) {
+  const oldFileName = oldAvatarUrl.split("/avatars/")[1];
+
+  const { error: deleteError } = await supabase.storage
+  .from("avatars")
+  .remove([oldFileName]);
+
+if (deleteError) {
+  console.error("Failed to delete old avatar:", deleteError);
+}
+}
+
+toast.success("Profile updated successfully!");
   } catch (error: any) {
-    alert(error.message);
+    toast.error(error.message);
   } finally {
     setSaving(false);
   }
@@ -127,23 +165,49 @@ if (avatarFile) {
     {(profile?.role ?? "").replace("_", " ")}
   </p>
 
- <label className="mt-6 cursor-pointer rounded-xl border border-emerald-700 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-700 hover:text-white">
+ <label
+  className={`mt-6 rounded-xl border border-emerald-700 px-4 py-2 text-sm font-medium transition ${
+    uploadingAvatar
+      ? "cursor-not-allowed bg-gray-100 text-gray-400"
+      : "cursor-pointer text-emerald-700 hover:bg-emerald-700 hover:text-white"
+  }`}
+>
   <div className="flex items-center gap-2">
   <Camera className="h-4 w-4" />
-  Change Photo
+  {uploadingAvatar ? "Uploading..." : "Change Photo"}
 </div>
 
   <input
     type="file"
     accept="image/*"
     className="hidden"
-    onChange={(e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+    disabled={uploadingAvatar}
+  onChange={(e) => {
+  const file = e.target.files?.[0];
 
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
-    }}
+  if (!file) return;
+
+  // Allow only images
+ const allowedTypes = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+];
+
+if (!allowedTypes.includes(file.type)) {
+  toast.error("Only JPG, PNG and WEBP images are allowed.");
+  return;
+}
+
+if (file.size > 2 * 1024 * 1024) {
+  toast.error("Image must be smaller than 2MB.");
+  return;
+}
+
+  setAvatarFile(file);
+  setAvatarPreview(URL.createObjectURL(file));
+}}
   />
 </label>
 </div>

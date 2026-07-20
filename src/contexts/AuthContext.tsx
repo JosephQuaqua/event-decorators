@@ -49,6 +49,12 @@ console.log("Profile error:", error);
 setProfile(data);
   };
 
+  const refreshProfile = async () => {
+  if (!user) return;
+
+  await loadProfile(user.id);
+};
+
   useEffect(() => {
     const initialize = async () => {
       const {
@@ -87,11 +93,7 @@ setProfile(data);
     };
   }, []);
 
-  const refreshProfile = async () => {
-  if (!user) return;
-
-  await loadProfile(user.id);
-};
+  
   const signOut = async () => {
     await supabase.auth.signOut();
 
