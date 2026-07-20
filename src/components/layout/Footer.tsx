@@ -76,26 +76,35 @@ export function Footer() {
             </p>
             <div className="mt-6 flex items-center gap-3">
               <a
-                href="#"
+                href="https://www.instagram.com/yourprofile"
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Instagram"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-charcoal-800 text-ivory-300 transition-colors hover:bg-gold-500 hover:text-white"
               >
                 <Instagram className="h-5 w-5" />
               </a>
-              <a
-                href="https://www.facebook.com/share/1F4jVcVVVh/?mibextid=wwXIfr"
-                aria-label="Facebook"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-charcoal-800 text-ivory-300 transition-colors hover:bg-gold-500 hover:text-white"
-              >
-                <Facebook className="h-5 w-5" />
-              </a>
-              <a
-                href="#"
+
+             <a
+              href="https://www.facebook.com/share/1F4jVcVVVh/?mibextid=wwXIfr"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Facebook"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-charcoal-800 text-ivory-300 transition-colors hover:bg-gold-500 hover:text-white"
+            >
+              <Facebook className="h-5 w-5" />
+            </a>
+
+             <a
+                href="https://twitter.com/yourprofile"
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Twitter"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-charcoal-800 text-ivory-300 transition-colors hover:bg-gold-500 hover:text-white"
               >
                 <Twitter className="h-5 w-5" />
               </a>
+
+
             </div>
           </div>
 
