@@ -6,7 +6,7 @@ import {
   useBookings,
 } from '../../lib/hooks';
 import { Spinner } from '../../components/ui/Section';
-import { AdminTable, AdminPageHeader, type AdminColumn } from '../../components/ui/AdminTable';
+import { AdminTable, type AdminColumn } from '../../components/ui/AdminTable';
 import {
   BOOKING_STATUS_LABELS,
   BOOKING_STATUS_COLORS,
@@ -70,21 +70,21 @@ function BookingModal({ booking, onClose }: BookingModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-charcoal-900/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-luxury">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-xl">
         {/* Header */}
-        <div className="sticky top-0 flex items-center justify-between border-b border-ivory-200 bg-white px-6 py-4">
+       <div className="sticky top-0 flex items-center justify-between border-b border-[#ECE6DA] bg-gradient-to-r from-[#FCFAF6] to-white px-8 py-6">
           <div>
             <h2 className="font-serif text-2xl font-medium text-charcoal-900">
               {displayNames}
             </h2>
-            <p className="text-sm text-charcoal-500">
+           <p className="mt-1 text-base text-charcoal-500">
               {typeLabel}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-charcoal-500 hover:bg-ivory-100"
+           className="rounded-xl border border-[#ECE6DA] bg-white p-3 text-charcoal-500 shadow-sm transition-all hover:bg-[#FCFAF6] hover:shadow-md"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -227,10 +227,37 @@ export function AdminBookings() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        title="Bookings"
-        description="Manage all event bookings."
-      />
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+
+  <div>
+    <p className="text-sm font-semibold uppercase tracking-[0.25em] text-gold-600">
+      BOOKING MANAGEMENT
+    </p>
+
+    <h1 className="mt-2 font-serif text-4xl font-semibold text-charcoal-900">
+      Event Bookings
+    </h1>
+
+    <p className="mt-2 max-w-2xl text-charcoal-500">
+      View, manage and monitor every client booking from one premium workspace.
+    </p>
+  </div>
+
+  <div className="flex gap-3">
+
+    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-3">
+      <p className="text-xs uppercase tracking-wider text-emerald-700">
+        Total Bookings
+      </p>
+
+      <p className="mt-1 text-2xl font-bold text-emerald-800">
+        {bookings.length}
+      </p>
+    </div>
+
+  </div>
+
+</div>
 
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
@@ -240,10 +267,10 @@ export function AdminBookings() {
             type="button"
             onClick={() => setActiveTab(tab.key)}
             className={cn(
-              'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+              'rounded-2xl px-5 py-3 text-sm font-semibold transition-all duration-300',
               activeTab === tab.key
-                ? 'bg-gold-500 text-white'
-                : 'bg-white text-charcoal-600 border border-ivory-200 hover:bg-ivory-50'
+                ? 'bg-gradient-to-r from-[#C8A54B] to-[#B68C2C] text-white shadow-lg'
+                : 'bg-[#FAF9F7] text-charcoal-600 border border-[#ECE6DA] hover:bg-white hover:shadow-md'
             )}
           >
             {tab.label}

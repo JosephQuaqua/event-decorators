@@ -30,20 +30,20 @@ export function AdminTable<T extends { id: string }>({
 }: AdminTableProps<T>) {
   return (
     <div
-      className={cn(
-        'overflow-hidden rounded-2xl border border-ivory-200 bg-white shadow-luxury',
+  className={cn(
+    'overflow-hidden rounded-3xl border border-[#ECE6DA] bg-white shadow-xl',
         className
       )}
     >
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-ivory-200 bg-ivory-50">
+           <tr className="border-b border-[#ECE6DA] bg-gradient-to-r from-[#FCFAF6] to-[#F7F2E9]">
               {columns.map((column) => (
                 <th
                   key={column.key}
                   className={cn(
-                    'whitespace-nowrap px-5 py-4 font-semibold uppercase tracking-wider text-charcoal-500',
+  'whitespace-nowrap px-6 py-4 text-xs font-bold uppercase tracking-[0.18em] text-[#8B7A5A]',
                     column.className
                   )}
                 >
@@ -52,14 +52,26 @@ export function AdminTable<T extends { id: string }>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-ivory-200">
+          <tbody className="divide-y divide-[#F3EEE5] bg-white">
             {data.length === 0 ? (
               <tr>
-                <td
-                  colSpan={columns.length}
-                  className="px-5 py-12 text-center text-charcoal-400"
-                >
-                  {emptyMessage}
+               <td
+  colSpan={columns.length}
+  className="px-8 py-20 text-center"
+>
+                 <div className="flex flex-col items-center">
+  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#F8F4EC]">
+    📂
+  </div>
+
+  <h3 className="text-lg font-semibold text-charcoal-800">
+    Nothing here yet
+  </h3>
+
+  <p className="mt-1 text-sm text-charcoal-500">
+    {emptyMessage}
+  </p>
+</div>
                 </td>
               </tr>
             ) : (
@@ -68,15 +80,15 @@ export function AdminTable<T extends { id: string }>({
                   key={item.id}
                   onClick={() => onRowClick?.(item)}
                   className={cn(
-                    'transition-colors hover:bg-ivory-50',
-                    onRowClick && 'cursor-pointer'
-                  )}
+  'transition-all duration-300 hover:bg-[#FCFAF6] hover:shadow-sm',
+  onRowClick && 'cursor-pointer'
+)}
                 >
                   {columns.map((column) => (
                     <td
                       key={column.key}
                       className={cn(
-                        'whitespace-nowrap px-5 py-4 text-charcoal-700',
+  'whitespace-nowrap px-6 py-5 text-[15px] text-charcoal-700',
                         column.className
                       )}
                     >
