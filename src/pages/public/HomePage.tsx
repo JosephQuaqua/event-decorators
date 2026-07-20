@@ -85,14 +85,17 @@ export function HomePage() {
 function HeroSection() {
   const { data: settings } = useSiteSettings();
   const heroContent = settings?.hero_content as
-    | {
-        title?: string;
-        subtitle?: string;
-        image_url?: string;
-        cta_primary?: string;
-        cta_secondary?: string;
-      }
-    | undefined;
+  | {
+      title?: string;
+      subtitle?: string;
+      desktop_image_url?: string;
+      mobile_image_url?: string;
+      video_url?: string;
+      cta_primary?: string;
+      cta_secondary?: string;
+    }
+    
+  | undefined;
   const announcement = settings?.announcement as
     | { text?: string; is_active?: boolean }
     | undefined;
@@ -101,17 +104,31 @@ function HeroSection() {
   const subtitle =
     heroContent?.subtitle ??
     'Luxury event decoration, catering, cakes, tailoring, and full event planning for weddings, parties, graduations, and all ceremonies — all from one dedicated team in Monrovia, Liberia.';
-  const heroImage = heroContent?.image_url ?? PEXEL_IMAGES.hero;
+ const desktopHero =
+  heroContent?.desktop_image_url ?? PEXEL_IMAGES.hero;
+
+const mobileHero =
+  heroContent?.mobile_image_url ?? desktopHero;
   const ctaPrimary = heroContent?.cta_primary ?? 'Book Your Event';
   const ctaSecondary = heroContent?.cta_secondary ?? 'Request Quotation';
 
   return (
     <section className="relative flex min-h-screen items-center justify-center overflow-hidden">
       {/* Parallax background */}
-      <div
-        className="absolute inset-0 bg-cover bg-fixed bg-center"
-        style={{ backgroundImage: `url(${heroImage})` }}
-      />
+      <div className="absolute inset-0 overflow-hidden">
+  <picture>
+    <source
+      media="(max-width:768px)"
+      srcSet={mobileHero}
+    />
+
+    <img
+      src={desktopHero}
+      alt="Event Decorators"
+      className="h-full w-full object-cover object-center"
+    />
+  </picture>
+</div>
       <div className="absolute inset-0 bg-hero-overlay" />
 
       {/* Announcement banner */}
