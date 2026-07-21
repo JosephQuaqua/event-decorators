@@ -1,5 +1,10 @@
-import { useMemo, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { useEffect, useMemo, useState } from 'react';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { X, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import {
@@ -16,6 +21,64 @@ import {
 import { cn, formatDate, formatDateShort, formatTime } from '../../lib/utils';
 import type { Booking, BookingStatus } from '../../types';
 
+type BookingStatusHistory = {
+  id: string;
+  booking_id: string;
+  old_status: BookingStatus | null;
+  new_status: BookingStatus;
+  changed_by: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+const ALLOWED_STATUS_TRANSITIONS: Record<
+  BookingStatus,
+  BookingStatus[]
+> = {
+  new: [
+    "pending_review",
+    "cancelled",
+  ],
+
+  pending_review: [
+    "contacted",
+    "rejected",
+    "cancelled",
+  ],
+
+  contacted: [
+    "negotiation",
+    "cancelled",
+  ],
+
+  negotiation: [
+    "quotation_sent",
+    "cancelled",
+  ],
+
+  quotation_sent: [
+    "accepted",
+    "rejected",
+    "cancelled",
+  ],
+
+  accepted: [
+    "scheduled",
+    "cancelled",
+  ],
+
+  scheduled: [
+    "completed",
+    "cancelled",
+  ],
+
+  completed: [],
+
+  cancelled: [],
+
+  rejected: [],
+};
+
 // ---------------------------------------------------------------------------
 // Booking detail modal
 // ---------------------------------------------------------------------------
@@ -27,21 +90,87 @@ interface BookingModalProps {
 
 function BookingModal({ booking, onClose }: BookingModalProps) {
   const queryClient = useQueryClient();
-  const [statusOpen, setStatusOpen] = useState(false);
+
+//   const {
+//   data: statusHistory = [],
+//   isLoading: isHistoryLoading,
+// } = 
+ const { data: statusHistory = [] } = useQuery({
+  queryKey: ['booking-status-history', booking?.id],
+  queryFn: async () => {
+    if (!booking?.id) return [];
+
+    const { data, error } = await supabase
+      .from('booking_status_history')
+      .select('*')
+      .eq('booking_id', booking.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data as BookingStatusHistory[];
+  },
+  enabled: !!booking?.id,
+});
+
+console.log('STATUS HISTORY:', statusHistory);
+    const [statusOpen, setStatusOpen] = useState(false);
+
+  
+
+  const [confirmStatus, setConfirmStatus] =
+  useState<BookingStatus | null>(null);
 
   const updateStatus = useMutation({
-    mutationFn: async (status: BookingStatus) => {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status })
-        .eq('id', booking!.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
-      setStatusOpen(false);
-    },
-  });
+  mutationFn: async (status: BookingStatus) => {
+    // 1. Get the currently logged-in admin user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error('You must be logged in to change booking status.');
+    }
+
+    // 2. Save the old status
+    const oldStatus = booking!.status;
+
+    // 3. Update booking status
+    const { error: bookingError } = await supabase
+      .from('bookings')
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', booking!.id);
+
+    if (bookingError) {
+      throw bookingError;
+    }
+
+    // 4. Record status change in history
+    const { error: historyError } = await supabase
+      .from('booking_status_history')
+      .insert({
+        booking_id: booking!.id,
+        old_status: oldStatus,
+        new_status: status,
+        changed_by: user.id,
+      });
+
+    if (historyError) {
+      throw historyError;
+    }
+  },
+
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ['admin-bookings'],
+    });
+
+    setStatusOpen(false);
+  },
+});
 
   if (!booking) return null;
 
@@ -66,6 +195,8 @@ function BookingModal({ booking, onClose }: BookingModalProps) {
       <p className="mt-1 text-charcoal-800">{value || '—'}</p>
     </div>
   );
+
+  
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -99,7 +230,12 @@ function BookingModal({ booking, onClose }: BookingModalProps) {
           <div className="relative inline-block">
             <button
               type="button"
-              onClick={() => setStatusOpen((v) => !v)}
+              disabled={ALLOWED_STATUS_TRANSITIONS[booking.status].length === 0}
+             onClick={() => {
+  if (ALLOWED_STATUS_TRANSITIONS[booking.status].length > 0) {
+    setStatusOpen((v) => !v);
+  }
+}}
               className={cn(
                 'flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium',
                 BOOKING_STATUS_COLORS[booking.status] ??
@@ -111,20 +247,26 @@ function BookingModal({ booking, onClose }: BookingModalProps) {
             </button>
             {statusOpen && (
               <div className="absolute left-0 top-full z-20 mt-1 w-56 rounded-xl border border-ivory-200 bg-white py-1 shadow-luxury">
-                {Object.entries(BOOKING_STATUS_LABELS).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    disabled={updateStatus.isPending}
-                    onClick={() => updateStatus.mutate(value as BookingStatus)}
-                    className={cn(
-                      'block w-full px-4 py-2 text-left text-sm transition-colors hover:bg-ivory-50',
-                      value === booking.status && 'font-semibold text-gold-600'
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+                {ALLOWED_STATUS_TRANSITIONS[booking.status].length === 0 ? (
+  <div className="px-4 py-3 text-sm text-charcoal-400">
+    No further status changes available.
+  </div>
+) : (
+  ALLOWED_STATUS_TRANSITIONS[booking.status].map((status) => (
+    <button
+      key={status}
+      type="button"
+      disabled={updateStatus.isPending}
+      onClick={() => {
+  setConfirmStatus(status);
+  setStatusOpen(false);
+}}
+      className="block w-full px-4 py-2 text-left text-sm transition-colors hover:bg-ivory-50"
+    >
+      {BOOKING_STATUS_LABELS[status]}
+    </button>
+  ))
+)}
               </div>
             )}
           </div>
@@ -180,11 +322,73 @@ function BookingModal({ booking, onClose }: BookingModalProps) {
             </div>
           )}
 
+          <div className="border-t border-ivory-200 pt-6">
+  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-charcoal-400">
+    Booking History
+  </p>
+
+  <p className="text-sm text-charcoal-600">
+    {statusHistory.length} status change
+    {statusHistory.length !== 1 ? 's' : ''}
+  </p>
+</div>
+
           <div className="border-t border-ivory-200 pt-4 text-xs text-charcoal-400">
-            Created {formatDate(booking.created_at)} · Updated {formatDate(booking.updated_at)}
-          </div>
-        </div>
+  Created {formatDate(booking.created_at)} · Updated {formatDate(booking.updated_at)}
+</div>
+</div>
+</div>
+
+{/* Status Confirmation Dialog */}
+{confirmStatus && (
+  <div className="absolute inset-0 z-30 flex items-center justify-center rounded-3xl bg-charcoal-900/30 p-6 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl border border-[#ECE6DA] bg-white p-6 shadow-2xl">
+      
+      <h3 className="font-serif text-2xl font-medium text-charcoal-900">
+        Change Booking Status?
+      </h3>
+
+      <p className="mt-3 text-sm leading-6 text-charcoal-500">
+        You are about to change this booking from{' '}
+        <span className="font-semibold text-charcoal-800">
+          {BOOKING_STATUS_LABELS[booking.status]}
+        </span>{' '}
+        to{' '}
+        <span className="font-semibold text-gold-600">
+          {BOOKING_STATUS_LABELS[confirmStatus]}
+        </span>.
+      </p>
+
+      <p className="mt-3 text-xs text-charcoal-400">
+        This status change will be recorded in the booking history.
+      </p>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => setConfirmStatus(null)}
+          disabled={updateStatus.isPending}
+          className="rounded-xl border border-[#ECE6DA] bg-white px-5 py-2.5 text-sm font-medium text-charcoal-600 transition-colors hover:bg-[#FCFAF6] disabled:opacity-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            updateStatus.mutate(confirmStatus);
+            setConfirmStatus(null);
+          }}
+          disabled={updateStatus.isPending}
+          className="rounded-xl bg-gradient-to-r from-[#C8A54B] to-[#B68C2C] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {updateStatus.isPending ? 'Updating...' : 'Confirm Change'}
+        </button>
       </div>
+
+    </div>
+  </div>
+)}
     </div>
   );
 }
@@ -202,11 +406,108 @@ export function AdminBookings() {
   const { data: bookings = [], isLoading } = useBookings();
   const [activeTab, setActiveTab] = useState('all');
   const [selected, setSelected] = useState<Booking | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+const [rowsPerPage, setRowsPerPage] = useState(10);
+useEffect(() => {
+  setCurrentPage(1);
+}, [searchTerm, activeTab, sortBy]);
 
   const filtered = useMemo(() => {
-    if (activeTab === 'all') return bookings;
-    return bookings.filter((b) => b.status === activeTab);
-  }, [bookings, activeTab]);
+
+
+  const term = searchTerm.trim().toLowerCase();
+
+ const results = bookings.filter((booking) => {
+  const matchesStatus =
+    activeTab === 'all' || booking.status === activeTab;
+
+  const searchableText = [
+    booking.bride_name,
+    booking.groom_name,
+    booking.client_name,
+    booking.email,
+    booking.phone,
+    booking.venue,
+    booking.event_type,
+    booking.wedding_type,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  const matchesSearch =
+    term === '' || searchableText.includes(term);
+
+  return matchesStatus && matchesSearch;
+});
+
+results.sort((a, b) => {
+  switch (sortBy) {
+    case 'oldest':
+      return (
+        new Date(a.created_at).getTime() -
+        new Date(b.created_at).getTime()
+      );
+
+    case 'event':
+      return (
+        new Date(a.event_date ?? 0).getTime() -
+new Date(b.event_date ?? 0).getTime()
+      );
+
+    case 'client': {
+      const nameA =
+        a.client_name ||
+        `${a.bride_name ?? ''} ${a.groom_name ?? ''}`;
+      const nameB =
+        b.client_name ||
+        `${b.bride_name ?? ''} ${b.groom_name ?? ''}`;
+
+      return nameA.localeCompare(nameB);
+    }
+
+    case 'venue':
+      return (a.venue ?? '').localeCompare(b.venue ?? '');
+
+    case 'newest':
+    default:
+      return (
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime()
+      );
+  }
+});
+
+
+
+return results;
+}, [bookings, activeTab, searchTerm, sortBy]);
+
+const totalPages = Math.max(
+  1,
+  Math.ceil(filtered.length / rowsPerPage)
+);
+
+useEffect(() => {
+  if (currentPage > totalPages) {
+    setCurrentPage(totalPages);
+  }
+}, [currentPage, totalPages]);
+
+
+const paginatedBookings = filtered.slice(
+  (currentPage - 1) * rowsPerPage,
+  currentPage * rowsPerPage
+);
+
+
+const pageNumbers = Array.from(
+  { length: totalPages },
+  (_, index) => index + 1
+);
+
 
   const columns: AdminColumn[] = [
     { key: 'client', header: 'Client' },
@@ -259,6 +560,39 @@ export function AdminBookings() {
 
 </div>
 
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+  <div className="relative w-full max-w-md">
+    <input
+      type="text"
+      placeholder="Search bookings..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="w-full rounded-2xl border border-[#ECE6DA] bg-white px-5 py-3 text-sm outline-none transition-all focus:border-[#C8A54B] focus:ring-4 focus:ring-[#C8A54B]/10"
+    />
+
+    
+  </div>
+
+  <div className="w-full lg:w-64">
+  <select
+    value={sortBy}
+    onChange={(e) => setSortBy(e.target.value)}
+    className="w-full rounded-2xl border border-[#ECE6DA] bg-white px-5 py-3 text-sm outline-none transition-all focus:border-[#C8A54B] focus:ring-4 focus:ring-[#C8A54B]/10"
+  >
+    
+    <option value="newest">Newest First</option>
+    
+    <option value="oldest">Oldest First</option>
+    <option value="event">Event Date</option>
+    <option value="client">Client Name (A–Z)</option>
+    <option value="venue">Venue (A–Z)</option>
+  </select>
+</div>
+
+
+</div>
+
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
         {FILTER_TABS.map((tab) => (
@@ -284,8 +618,8 @@ export function AdminBookings() {
       </div>
 
       <AdminTable
-        columns={columns}
-        data={filtered}
+  columns={columns}
+  data={paginatedBookings}
         onRowClick={(b) => setSelected(b)}
         renderCell={(booking, col) => {
           switch (col.key) {
@@ -332,6 +666,76 @@ export function AdminBookings() {
           }
         }}
       />
+
+
+      <div className="flex items-center justify-between rounded-2xl border border-[#ECE6DA] bg-white px-6 py-4">
+
+  <p className="text-sm text-charcoal-500">
+    Showing{" "}
+    <span className="font-semibold">{paginatedBookings.length}</span> of{" "}
+    <span className="font-semibold">{filtered.length}</span> bookings
+  </p>
+
+ <div className="flex items-center gap-6">
+
+  <div className="flex items-center gap-2">
+    <span className="text-sm text-charcoal-500">
+      Rows per page
+    </span>
+
+    <select
+      value={rowsPerPage}
+      onChange={(e) => {
+        setRowsPerPage(Number(e.target.value));
+        setCurrentPage(1);
+      }}
+      className="rounded-xl border border-[#ECE6DA] px-3 py-2 text-sm"
+    >
+      <option value={10}>10</option>
+      <option value={25}>25</option>
+      <option value={50}>50</option>
+      <option value={100}>100</option>
+    </select>
+  </div>
+
+    <button
+      onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+      disabled={currentPage === 1}
+      className="rounded-xl border border-[#ECE6DA] px-4 py-2 text-sm disabled:opacity-40"
+    >
+      Previous
+    </button>
+
+    <div className="flex items-center gap-2">
+  {pageNumbers.map((page) => (
+    <button
+      key={page}
+      onClick={() => setCurrentPage(page)}
+      className={cn(
+        "h-10 w-10 rounded-xl text-sm font-medium transition-all",
+        currentPage === page
+          ? "bg-gradient-to-r from-[#C8A54B] to-[#B68C2C] text-white shadow-md"
+          : "border border-[#ECE6DA] bg-white text-charcoal-600 hover:bg-[#FCFAF6]"
+      )}
+    >
+      {page}
+    </button>
+  ))}
+</div>
+
+    <button
+      onClick={() =>
+        setCurrentPage((page) => Math.min(totalPages, page + 1))
+      }
+      disabled={currentPage === totalPages}
+      className="rounded-xl border border-[#ECE6DA] px-4 py-2 text-sm disabled:opacity-40"
+    >
+      Next
+    </button>
+
+  </div>
+
+</div>
 
       {selected && (
         <BookingModal booking={selected} onClose={() => setSelected(null)} />
