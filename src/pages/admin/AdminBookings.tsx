@@ -19,7 +19,10 @@ import {
   EVENT_TYPE_LABELS,
 } from '../../lib/constants';
 import { cn, formatDate, formatDateShort, formatTime } from '../../lib/utils';
-import type { Booking, BookingStatus } from '../../types';
+import type {
+  Booking,
+  BookingStatus,
+} from '../../types';
 
 type BookingStatusHistory = {
   id: string;
@@ -30,6 +33,7 @@ type BookingStatusHistory = {
   note: string | null;
   created_at: string;
 };
+
 
 const ALLOWED_STATUS_TRANSITIONS: Record<
   BookingStatus,
@@ -91,88 +95,70 @@ interface BookingModalProps {
 function BookingModal({ booking, onClose }: BookingModalProps) {
   const queryClient = useQueryClient();
 
-//   const {
-//   data: statusHistory = [],
-//   isLoading: isHistoryLoading,
-// } = 
- const { data: statusHistory = [] } = useQuery({
-  queryKey: ['booking-status-history', booking?.id],
-  queryFn: async () => {
-    if (!booking?.id) return [];
-
-    const { data, error } = await supabase
-      .from('booking_status_history')
-      .select('*')
-      .eq('booking_id', booking.id)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return data as BookingStatusHistory[];
-  },
-  enabled: !!booking?.id,
-});
-
-console.log('STATUS HISTORY:', statusHistory);
-    const [statusOpen, setStatusOpen] = useState(false);
-
-  
-
+  const [statusOpen, setStatusOpen] = useState(false);
   const [confirmStatus, setConfirmStatus] =
-  useState<BookingStatus | null>(null);
+    useState<BookingStatus | null>(null);
+
+  const {
+    data: statusHistory = [],
+    isLoading: isHistoryLoading,
+  } = useQuery({
+    queryKey: ['booking-status-history', booking?.id],
+    queryFn: async () => {
+      if (!booking?.id) return [];
+
+      const { data, error } = await supabase
+        .from('booking_status_history')
+        .select('*')
+        .eq('booking_id', booking.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data as BookingStatusHistory[];
+    },
+    enabled: !!booking?.id,
+  });
+
+  console.log('STATUS HISTORY:', statusHistory);
 
   const updateStatus = useMutation({
-  mutationFn: async (status: BookingStatus) => {
-    // 1. Get the currently logged-in admin user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    mutationFn: async (status: BookingStatus) => {
+      if (!booking?.id) {
+        throw new Error('No booking selected.');
+      }
 
-    if (!user) {
-      throw new Error('You must be logged in to change booking status.');
-    }
+      const { data, error } = await supabase.rpc(
+        'update_booking_status',
+        {
+          p_booking_id: booking.id,
+          p_new_status: status,
+        }
+      );
 
-    // 2. Save the old status
-    const oldStatus = booking!.status;
+      if (error) {
+        throw error;
+      }
 
-    // 3. Update booking status
-    const { error: bookingError } = await supabase
-      .from('bookings')
-      .update({
-        status,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', booking!.id);
+      return data;
+    },
 
-    if (bookingError) {
-      throw bookingError;
-    }
-
-    // 4. Record status change in history
-    const { error: historyError } = await supabase
-      .from('booking_status_history')
-      .insert({
-        booking_id: booking!.id,
-        old_status: oldStatus,
-        new_status: status,
-        changed_by: user.id,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin-bookings'],
       });
 
-    if (historyError) {
-      throw historyError;
-    }
-  },
+      queryClient.invalidateQueries({
+        queryKey: ['booking-status-history', booking?.id],
+      });
 
-  onSuccess: () => {
-    queryClient.invalidateQueries({
-      queryKey: ['admin-bookings'],
-    });
-
-    setStatusOpen(false);
-  },
-});
+      setStatusOpen(false);
+      setConfirmStatus(null);
+    },
+  });
 
   if (!booking) return null;
+   
 
   const isWedding = (booking.event_type ?? 'wedding') === 'wedding';
   const displayNames = isWedding
@@ -323,14 +309,49 @@ console.log('STATUS HISTORY:', statusHistory);
           )}
 
           <div className="border-t border-ivory-200 pt-6">
-  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-charcoal-400">
+  <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-charcoal-400">
     Booking History
   </p>
 
-  <p className="text-sm text-charcoal-600">
-    {statusHistory.length} status change
-    {statusHistory.length !== 1 ? 's' : ''}
-  </p>
+  {isHistoryLoading ? (
+    <p className="text-sm text-charcoal-400">
+      Loading history...
+    </p>
+  ) : statusHistory.length === 0 ? (
+    <p className="text-sm text-charcoal-400">
+      No status changes recorded yet.
+    </p>
+  ) : (
+    <div className="space-y-4">
+      {statusHistory.map((history) => (
+        <div
+          key={history.id}
+          className="rounded-xl border border-ivory-200 bg-ivory-50 p-4"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-charcoal-800">
+                {history.old_status
+                  ? `${BOOKING_STATUS_LABELS[history.old_status]} → `
+                  : ''}
+                {BOOKING_STATUS_LABELS[history.new_status]}
+              </p>
+
+              <p className="mt-1 text-xs text-charcoal-400">
+                {formatDate(history.created_at)}
+              </p>
+            </div>
+          </div>
+
+          {history.note && (
+            <p className="mt-2 text-sm text-charcoal-600">
+              {history.note}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
 </div>
 
           <div className="border-t border-ivory-200 pt-4 text-xs text-charcoal-400">
